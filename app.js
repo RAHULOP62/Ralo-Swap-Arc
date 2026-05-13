@@ -2,24 +2,42 @@
 const KIT_KEY = 'b11a4116cf8dd565148424da4b9633d2:39d1b5a8bc92e0d2f03d8b739ad7f3cf';
 const CLIENT_KEY = '561784262da6308864268e86ebb64a26:473ff86ad2772cd342f6ee090e2e7699';
 
-// Arc Testnet Token Addresses
+// Arc Testnet Contract Addresses from Documentation
 const TOKENS = {
-    tUSDC: "0x28E49B36C1c6fD16ad81aB152488f37C93b3D8CA",
-    tARC: "0xe66a11cb4b147F208e6d81B7540bfc83E1680c78"
+    USDC: "0x3600000000000000000000000000000000000000", // Native/ERC-20 Interface (6 Decimals)
+    EURC: "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a", // 6 Decimals
+    USYC: "0xe9185F0c5F296Ed1797AaE4238D26CCaBEadb86C"  // Yield-bearing (6 Decimals)
 };
+
+const ARC_CHAIN_ID = "0x4cef52"; // Arc Testnet Chain ID
 
 let provider, signer, userAddress;
 let currentTab = 'swap';
-let currentFromToken = 'tUSDC';
+let currentFromToken = 'USDC';
 
-// Standard ERC-20 ABI to read balance
-const minABI = ["function balanceOf(address) view returns (uint256)", "function decimals() view returns (uint8)"];
+// Standard ERC-20 ABI
+const minABI = [
+    "function balanceOf(address) view returns (uint256)", 
+    "function decimals() view returns (uint8)",
+    "function symbol() view returns (string)"
+];
 
-// 2. MetaMask Connection
+// 2. MetaMask Connection with Chain Switching
 async function connectWallet() {
     if (window.ethereum) {
         try {
             provider = new ethers.providers.Web3Provider(window.ethereum);
+            
+            // Auto-switch to Arc Testnet
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: ARC_CHAIN_ID }],
+                });
+            } catch (switchError) {
+                console.log("Switching failed, manual check needed.");
+            }
+
             await provider.send("eth_requestAccounts", []);
             signer = provider.getSigner();
             userAddress = await signer.getAddress();
@@ -27,17 +45,16 @@ async function connectWallet() {
             // UI Updates
             const btn = document.getElementById('connectBtn');
             btn.innerText = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
-            btn.style.background = "#059669";
+            btn.style.background = "#10b981";
             
             const actionBtn = document.getElementById('actionBtn');
             actionBtn.innerText = currentTab === 'swap' ? "Swap Now" : "Supply Liquidity";
             actionBtn.classList.add('ready');
             actionBtn.disabled = false;
 
-            console.log("RALOSWAP Connected:", userAddress);
             updateBalances();
         } catch (error) {
-            console.error("User rejected connection");
+            console.error("Connection failed:", error);
         }
     } else {
         alert("Bhai, MetaMask install karlo!");
@@ -70,58 +87,58 @@ function switchTab(tab) {
     }
 }
 
-// 4. Price & Token Logic
+// 4. Price & Token Logic (Arc-specific scaling)
 function calculatePrice() {
     const fromVal = document.getElementById('fromAmount').value;
     const toInput = document.getElementById('toAmount');
-    // Simulation: 1 tUSDC = 1.5 tARC
-    const rate = currentFromToken === 'tUSDC' ? 1.5 : 0.66;
-    toInput.value = fromVal > 0 ? (fromVal * rate).toFixed(4) : "";
+    // Real-world FX simulation (USDC to EURC approx rate)
+    const rate = currentFromToken === 'USDC' ? 0.92 : 1.08;
+    toInput.value = fromVal > 0 ? (fromVal * rate).toFixed(2) : "";
 }
 
 function flipTokens() {
-    currentFromToken = (currentFromToken === 'tUSDC') ? 'tARC' : 'tUSDC';
-    const toToken = (currentFromToken === 'tUSDC') ? 'tARC' : 'tUSDC';
+    currentFromToken = (currentFromToken === 'USDC') ? 'EURC' : 'USDC';
+    const toToken = (currentFromToken === 'USDC') ? 'EURC' : 'USDC';
 
-    document.getElementById('badge-from').innerHTML = `${currentFromToken === 'tUSDC' ? '💵 tUSDC' : '🌀 tARC'} <small>▼</small>`;
-    document.getElementById('badge-to').innerHTML = `${toToken === 'tUSDC' ? '💵 tUSDC' : '🌀 tARC'} <small>▼</small>`;
-    document.getElementById('route-path').innerText = `${currentFromToken} ➜ ${toToken}`;
+    document.getElementById('badge-from').innerHTML = `${currentFromToken === 'USDC' ? '💵 USDC' : '💶 EURC'} <small>▼</small>`;
+    document.getElementById('badge-to').innerHTML = `${toToken === 'USDC' ? '💵 USDC' : '💶 EURC'} <small>▼</small>`;
+    document.getElementById('route-path').innerText = `${currentFromToken} ➜ StableFX ➜ ${toToken}`;
     
     updateBalances();
     calculatePrice();
 }
 
-// 5. Handle Action (Backend API Call)
+// 5. Handle Action (StableFX & Backend Call)
 async function handleAction() {
     if (!userAddress) return connectWallet();
     
     const amount = document.getElementById('fromAmount').value;
-    if (!amount || amount <= 0) return alert("Valid amount daalo!");
+    if (!amount || amount <= 0) return alert("Sahi amount daalo!");
 
     const actionBtn = document.getElementById('actionBtn');
     actionBtn.innerText = "Processing...";
     actionBtn.disabled = true;
 
     try {
-        // Calling your Vercel/Node.js Backend
         const response = await fetch('/api/swap', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                walletId: "YOUR_CIRCLE_WALLET_ID", // Backend uses this for Developer Controlled Wallets
+                walletId: "YOUR_CIRCLE_WALLET_ID",
                 fromSymbol: currentFromToken,
                 amount: amount,
-                userAddress: userAddress // For verification
+                userAddress: userAddress,
+                network: 'arc-testnet'
             })
         });
 
         const data = await response.json();
         if (data.success) {
-            alert(`${currentTab.toUpperCase()} Successful!`);
+            alert(`${currentTab.toUpperCase()} Success on Arc Testnet!`);
             saveTx(currentTab, amount);
             updateBalances();
         } else {
-            alert("Error: " + (data.error || "Transaction Failed"));
+            alert("Error: " + (data.error || "Execution Failed"));
         }
     } catch (err) {
         alert("Transaction Error on RALOSWAP!");
@@ -131,19 +148,20 @@ async function handleAction() {
     }
 }
 
-// 6. Balance Fetching (Using Ethers)
+// 6. Balance Fetching (Arc-specific 6-decimal handling)
 async function updateBalances() {
     if (!userAddress || !provider) return;
 
     try {
-        const tUSDCContract = new ethers.Contract(TOKENS.tUSDC, minABI, provider);
-        const tARCContract = new ethers.Contract(TOKENS.tARC, minABI, provider);
+        const usdcContract = new ethers.Contract(TOKENS.USDC, minABI, provider);
+        const eurcContract = new ethers.Contract(TOKENS.EURC, minABI, provider);
 
-        const usdcBal = await tUSDCContract.balanceOf(userAddress);
-        const arcBal = await tARCContract.balanceOf(userAddress);
+        const usdcBal = await usdcContract.balanceOf(userAddress);
+        const eurcBal = await eurcContract.balanceOf(userAddress);
 
-        document.getElementById('balance-from').innerText = `Balance: ${parseFloat(ethers.utils.formatUnits(usdcBal, 18)).toFixed(2)} tUSDC`;
-        document.getElementById('balance-to').innerText = `Balance: ${parseFloat(ethers.utils.formatUnits(arcBal, 18)).toFixed(2)} tARC`;
+        // Arc Testnet USDC/EURC use 6 decimals
+        document.getElementById('token1-balance').innerText = `Balance: ${parseFloat(ethers.utils.formatUnits(usdcBal, 6)).toFixed(2)} USDC`;
+        document.getElementById('token2-balance').innerText = `Balance: ${parseFloat(ethers.utils.formatUnits(eurcBal, 6)).toFixed(2)} EURC`;
     } catch (err) {
         console.error("Balance fetch error:", err);
     }
@@ -152,9 +170,10 @@ async function updateBalances() {
 // 7. History Management
 function saveTx(type, amount) {
     let history = JSON.parse(localStorage.getItem('ralo_tx')) || [];
+    const target = currentFromToken === 'USDC' ? 'EURC' : 'USDC';
     history.unshift({
         type: type.toUpperCase(),
-        detail: `${amount} ${currentFromToken} ➜ ${(amount * 1.5).toFixed(2)} ${currentFromToken === 'tUSDC' ? 'tARC' : 'tUSDC'}`,
+        detail: `${amount} ${currentFromToken} ➜ ${(amount * 0.92).toFixed(2)} ${target}`,
         time: new Date().toLocaleTimeString(),
         status: "Success"
     });
@@ -184,6 +203,6 @@ function renderHistory() {
     `).join('');
 }
 
-// Event Listeners
+// Listeners
 document.getElementById('connectBtn').addEventListener('click', connectWallet);
 document.getElementById('actionBtn').addEventListener('click', handleAction);
