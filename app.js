@@ -1,136 +1,140 @@
-// --- CONFIGURATION ---
-const ARC_TESTNET = {
-    chainId: "0x4CEF52", // 5042002
-    chainName: "Arc Testnet",
-    nativeCurrency: {
-        name: "USDC",
-        symbol: "USDC",
-        decimals: 18
-    },
-    rpcUrls: ["https://rpc.testnet.arc.network"],
-    blockExplorerUrls: ["https://testnet.arcscan.app"]
-};
+// 1. Configuration & Initialization
+const KIT_KEY = 'b11a4116cf8dd565148424da4b9633d2:39d1b5a8bc92e0d2f03d8b739ad7f3cf';
+const CLIENT_KEY = 'YOUR_CLIENT_KEY_HERE'; // Dashboard ke 3rd option se generate karle
+const PROJECT_ID = 'YOUR_PROJECT_ID_HERE'; // Browser URL se nikal le
 
-// Circle Docs ke mutabiq application-level par 6 decimals use hote hain
-const USDC_DECIMALS = 6; 
-let provider, signer, userAddress;
+let userWalletId = null;
+let txHistory = JSON.parse(localStorage.getItem('arc_tx_history')) || [];
 
-// 1. WALLET CONNECTION LOGIC
-async function connectWallet() {
-    if (typeof window.ethereum !== 'undefined') {
-        try {
-            // Requesting Accounts
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            userAddress = accounts[0];
+// Arc App Kit Setup
+const arcAppKit = new ArcAppKit({
+    appKitKey: KIT_KEY,
+    clientKey: CLIENT_KEY,
+    network: 'arc-testnet'
+});
 
-            // Network Switch/Add Logic
-            try {
-                await window.ethereum.request({
-                    method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: ARC_TESTNET.chainId }],
-                });
-            } catch (switchError) {
-                if (switchError.code === 4902) {
-                    await window.ethereum.request({
-                        method: 'wallet_addEthereumChain',
-                        params: [ARC_TESTNET],
-                    });
-                }
-            }
+// 2. UI Elements
+const connectBtn = document.getElementById('connectBtn');
+const swapBtn = document.getElementById('swapBtn');
+const fromAmount = document.getElementById('fromAmount');
+const toAmount = document.getElementById('toAmount');
+const navLinks = document.querySelectorAll('.nav-links span');
 
-            // Setup Ethers
-            provider = new ethers.providers.Web3Provider(window.ethereum);
-            signer = provider.getSigner();
+// 3. Tab Navigation Logic
+navLinks.forEach(link => {
+    link.addEventListener('click', () => {
+        navLinks.forEach(s => s.classList.remove('active'));
+        link.classList.add('active');
+        const tab = link.innerText.toLowerCase();
+        updateUIForTab(tab);
+    });
+});
 
-            // Update UI
-            updateUIConnected();
-            fetchBalance();
-
-        } catch (error) {
-            console.error("User rejected connection", error);
-        }
+function updateUIForTab(tab) {
+    const cardHeader = document.querySelector('.card-header h3');
+    if (tab === 'liquidity') {
+        cardHeader.innerText = 'Add Liquidity';
+        swapBtn.innerText = userWalletId ? 'Supply' : 'Connect Wallet';
+    } else if (tab === 'history') {
+        renderHistory();
     } else {
-        alert("MetaMask install karein!");
+        cardHeader.innerText = 'Swap Tokens';
+        swapBtn.innerText = userWalletId ? 'Swap' : 'Connect Wallet First';
     }
 }
 
-// 2. UI UPDATE AFTER CONNECTION
-function updateUIConnected() {
-    const btn = document.getElementById('connectWallet');
-    const swapBtn = document.getElementById('swapBtn');
-    
-    btn.innerText = userAddress.slice(0, 6) + "..." + userAddress.slice(-4);
-    btn.classList.add('text-[#d4ff33]');
-    
-    swapBtn.innerText = "Review Swap";
-    swapBtn.classList.remove('opacity-50');
-}
-
-// 3. FETCH BALANCE (Native USDC 18-decimal display as 6)
-async function fetchBalance() {
+// 4. Wallet Connection
+connectBtn.addEventListener('click', async () => {
     try {
-        const balance = await provider.getBalance(userAddress);
-        // Display using 6 decimals as per Circle App Kit best practices
-        const formatted = ethers.utils.formatUnits(balance, 18); 
-        document.getElementById('usdcBalance').innerText = parseFloat(formatted).toFixed(2);
+        const wallet = await arcAppKit.connect();
+        userWalletId = wallet.id;
+        connectBtn.innerText = `Connected: ${wallet.address.slice(0,6)}...`;
+        swapBtn.innerText = 'Swap';
+        swapBtn.style.background = 'var(--primary)';
+        console.log("Wallet Connected:", userWalletId);
     } catch (err) {
-        console.log("Balance error:", err);
-    }
-}
-
-// 4. ESTIMATE SWAP RATE (Logic based on Circle Docs)
-const inputAmount = document.getElementById('inputAmount');
-const outputAmount = document.getElementById('outputAmount');
-
-inputAmount.addEventListener('input', async (e) => {
-    const val = e.target.value;
-    if (val > 0) {
-        // Simulation of kit.estimateSwap()
-        // Asli rate Fetch karne ke liye Circle Kit Key zaroori hai
-        const rate = 0.9214; 
-        const estimatedOutput = val * rate;
-        
-        outputAmount.value = estimatedOutput.toFixed(4);
-        document.getElementById('minReceived').innerText = (estimatedOutput * 0.99).toFixed(4); // 1% Slippage
-        document.getElementById('rateDisplay').innerText = rate;
-    } else {
-        outputAmount.value = "";
-        document.getElementById('minReceived').innerText = "0.00";
+        alert("Connection Failed: " + err.message);
     }
 });
 
-// 5. EXECUTE SWAP (Placeholder for Circle kit.swap)
-async function handleSwap() {
-    if (!userAddress) {
-        connectWallet();
-        return;
-    }
+// 5. Swap Logic (Backend API Call)
+swapBtn.addEventListener('click', async () => {
+    if (!userWalletId) return alert("Pehle wallet connect karo!");
+    
+    const amount = fromAmount.value;
+    if (!amount || amount <= 0) return alert("Sahi amount daalo!");
 
-    const amount = inputAmount.value;
-    if (!amount) return;
+    swapBtn.innerText = "Processing...";
+    swapBtn.disabled = true;
 
     try {
-        const swapBtn = document.getElementById('swapBtn');
-        swapBtn.innerText = "Processing Transaction...";
-        swapBtn.disabled = true;
+        // Tumhare Vercel API ko call kar raha hai
+        const response = await fetch('/api/swap', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                walletId: userWalletId,
+                fromSymbol: 'tUSDC', // Logic: ETH/ARC replacement
+                amount: amount
+            })
+        });
 
-        // Yahan Circle SDK ka 'kit.swap' call hoga
-        console.log("Initiating swap on Arc Testnet for:", amount);
+        const result = await response.json();
         
-        // Transaction Simulation
-        setTimeout(() => {
-            alert("Swap Successful on Arc Testnet!");
-            swapBtn.innerText = "Swap Success";
-            swapBtn.disabled = false;
-            fetchBalance();
-        }, 3000);
-
-    } catch (error) {
-        console.error("Swap failed", error);
-        alert("Transaction failed!");
+        if (result.success) {
+            alert("Transaction Success!");
+            addTxToHistory("SWAP", `Swapped ${amount} ETH for ARC`);
+            fromAmount.value = "";
+            toAmount.value = "";
+        } else {
+            alert("Error: " + result.error);
+        }
+    } catch (err) {
+        alert("Request Failed: " + err.message);
+    } finally {
+        swapBtn.innerText = "Swap";
+        swapBtn.disabled = false;
     }
+});
+
+// 6. Price Calculation Simulation
+fromAmount.addEventListener('input', (e) => {
+    const val = e.target.value;
+    if (val) {
+        // Testnet simulation: 1 ETH = 2500 ARC
+        toAmount.value = (val * 2500).toFixed(2);
+    } else {
+        toAmount.value = "";
+    }
+});
+
+// 7. History Management
+function addTxToHistory(type, desc) {
+    const newTx = {
+        type,
+        desc,
+        date: new Date().toLocaleString(),
+        status: 'Completed'
+    };
+    txHistory.unshift(newTx);
+    localStorage.setItem('arc_tx_history', JSON.stringify(txHistory));
 }
 
-// Event Listeners
-document.getElementById('connectWallet').addEventListener('click', connectWallet);
-document.getElementById('swapBtn').addEventListener('click', handleSwap);
+function renderHistory() {
+    const container = document.querySelector('.main-content');
+    let html = `<div class="swap-card"><h3>Transaction History</h3>`;
+    
+    if (txHistory.length === 0) {
+        html += `<p style="color:var(--subtext); font-size:14px;">No transactions yet.</p>`;
+    } else {
+        txHistory.forEach(tx => {
+            html += `
+                <div class="details-box" style="margin-bottom:10px;">
+                    <div class="detail-row"><b>${tx.type}</b> <span>${tx.status}</span></div>
+                    <div class="detail-row"><small>${tx.desc}</small> <small>${tx.date}</small></div>
+                </div>`;
+        });
+    }
+    html += `<button onclick="window.location.reload()" class="swap-button">Back to Swap</button></div>`;
+    container.innerHTML = html;
+}
