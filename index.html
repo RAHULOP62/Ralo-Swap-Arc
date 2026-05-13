@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RALOSWAP - Testnet DEX</title>
-    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
     <style>
         :root { --primary: #10b981; --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --border: #e2e8f0; --subtext: #64748b; }
         body { background-color: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; margin: 0; display: flex; flex-direction: column; min-height: 100vh; }
@@ -23,7 +22,6 @@
         .token-badge { background: white; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .divider { height: 32px; display: flex; justify-content: center; align-items: center; margin: -16px 0; position: relative; z-index: 2; }
         .divider button { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 4px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.05); transition: 0.2s; }
-        .divider button:active { transform: rotate(180deg); }
         .swap-button { background: #cbd5e1; color: white; border: none; width: 100%; padding: 14px; border-radius: 14px; font-size: 16px; font-weight: 700; margin-top: 16px; cursor: not-allowed; transition: 0.3s; }
         .swap-button.ready { background: var(--primary); cursor: pointer; }
         .details-box { margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 12px; border: 1px dashed var(--border); }
@@ -42,7 +40,6 @@
             <span id="tab-liquidity" onclick="switchTab('liquidity')">Liquidity</span>
             <span id="tab-history" onclick="switchTab('history')">History</span>
         </div>
-        <!-- Wallet button placeholder -->
         <button id="connectBtn">Connect MetaMask</button>
     </nav>
 
@@ -57,12 +54,10 @@
                 <div class="token-input-container">
                     <div class="token-info-top">
                         <span id="pay-label">You Pay</span>
-                        <!-- ID change for JS sync -->
                         <span id="token1-balance">Balance: 0.00 --</span>
                     </div>
                     <div class="input-row">
                         <input type="number" id="fromAmount" placeholder="0.0" oninput="calculatePrice()">
-                        <!-- ID change for Badge update -->
                         <div class="token-badge" id="badge-from">-- <small>▼</small></div>
                     </div>
                 </div>
@@ -72,12 +67,10 @@
                 <div class="token-input-container">
                     <div class="token-info-top">
                         <span id="receive-label">You Receive</span>
-                        <!-- ID change for JS sync -->
                         <span id="token2-balance">Balance: 0.00 --</span>
                     </div>
                     <div class="input-row">
                         <input type="number" id="toAmount" placeholder="0.0" readonly>
-                        <!-- ID change for Badge update -->
                         <div class="token-badge" id="badge-to">-- <small>▼</small></div>
                     </div>
                 </div>
@@ -102,6 +95,8 @@
         </div>
     </div>
 
+    <!-- Script loading order fix -->
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
