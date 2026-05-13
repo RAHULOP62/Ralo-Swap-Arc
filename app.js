@@ -1,140 +1,152 @@
-// 1. Configuration & Initialization
+// 1. Configuration - Keys Integrated
 const KIT_KEY = 'b11a4116cf8dd565148424da4b9633d2:39d1b5a8bc92e0d2f03d8b739ad7f3cf';
-const CLIENT_KEY = 'YOUR_CLIENT_KEY_HERE'; // Dashboard ke 3rd option se generate karle
-const PROJECT_ID = 'YOUR_PROJECT_ID_HERE'; // Browser URL se nikal le
+const CLIENT_KEY = '561784262da6308864268e86ebb64a26:473ff86ad2772cd342f6ee090e2e7699';
 
-let userWalletId = null;
-let txHistory = JSON.parse(localStorage.getItem('arc_tx_history')) || [];
+let provider, signer, userAddress;
+let currentTab = 'swap';
 
-// Arc App Kit Setup
-const arcAppKit = new ArcAppKit({
-    appKitKey: KIT_KEY,
-    clientKey: CLIENT_KEY,
-    network: 'arc-testnet'
-});
+// 2. MetaMask Connection
+async function connectWallet() {
+    if (window.ethereum) {
+        try {
+            provider = new ethers.providers.Web3Provider(window.ethereum);
+            await provider.send("eth_requestAccounts", []);
+            signer = provider.getSigner();
+            userAddress = await signer.getAddress();
 
-// 2. UI Elements
-const connectBtn = document.getElementById('connectBtn');
-const swapBtn = document.getElementById('swapBtn');
-const fromAmount = document.getElementById('fromAmount');
-const toAmount = document.getElementById('toAmount');
-const navLinks = document.querySelectorAll('.nav-links span');
+            // UI Updates
+            const btn = document.getElementById('connectBtn');
+            btn.innerText = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+            btn.style.background = "#059669";
+            
+            const actionBtn = document.getElementById('actionBtn');
+            actionBtn.innerText = "Swap Now";
+            actionBtn.classList.add('ready');
+            actionBtn.disabled = false;
 
-// 3. Tab Navigation Logic
-navLinks.forEach(link => {
-    link.addEventListener('click', () => {
-        navLinks.forEach(s => s.classList.remove('active'));
-        link.classList.add('active');
-        const tab = link.innerText.toLowerCase();
-        updateUIForTab(tab);
-    });
-});
-
-function updateUIForTab(tab) {
-    const cardHeader = document.querySelector('.card-header h3');
-    if (tab === 'liquidity') {
-        cardHeader.innerText = 'Add Liquidity';
-        swapBtn.innerText = userWalletId ? 'Supply' : 'Connect Wallet';
-    } else if (tab === 'history') {
-        renderHistory();
+            console.log("RALOSWAP: Connected to MetaMask", userAddress);
+            updateBalances();
+        } catch (error) {
+            console.error("Connection failed", error);
+        }
     } else {
-        cardHeader.innerText = 'Swap Tokens';
-        swapBtn.innerText = userWalletId ? 'Swap' : 'Connect Wallet First';
+        alert("Bhai, MetaMask install karlo pehle!");
     }
 }
 
-// 4. Wallet Connection
-connectBtn.addEventListener('click', async () => {
-    try {
-        const wallet = await arcAppKit.connect();
-        userWalletId = wallet.id;
-        connectBtn.innerText = `Connected: ${wallet.address.slice(0,6)}...`;
-        swapBtn.innerText = 'Swap';
-        swapBtn.style.background = 'var(--primary)';
-        console.log("Wallet Connected:", userWalletId);
-    } catch (err) {
-        alert("Connection Failed: " + err.message);
-    }
-});
+// 3. Tab Switching Logic
+function switchTab(tab) {
+    currentTab = tab;
+    const title = document.getElementById('card-title');
+    const swapUI = document.getElementById('swap-ui');
+    const historyUI = document.getElementById('history-ui');
+    const actionBtn = document.getElementById('actionBtn');
 
-// 5. Swap Logic (Backend API Call)
-swapBtn.addEventListener('click', async () => {
-    if (!userWalletId) return alert("Pehle wallet connect karo!");
+    document.querySelectorAll('.nav-links span').forEach(s => s.classList.remove('active'));
+    document.getElementById(`tab-${tab}`).classList.add('active');
+
+    if (tab === 'history') {
+        title.innerText = "RALOSCAN History";
+        swapUI.style.display = "none";
+        historyUI.style.display = "block";
+        renderHistory();
+    } else {
+        swapUI.style.display = "block";
+        historyUI.style.display = "none";
+        title.innerText = tab === 'liquidity' ? "Add Liquidity" : "Swap Tokens";
+        if (userAddress) {
+            actionBtn.innerText = tab === 'liquidity' ? "Supply Liquidity" : "Swap Now";
+        }
+    }
+}
+
+// 4. Price Calculation
+function calculatePrice() {
+    const fromVal = document.getElementById('fromAmount').value;
+    const toInput = document.getElementById('toAmount');
+    toInput.value = fromVal > 0 ? (fromVal * 2500).toFixed(2) : "";
+}
+
+// 5. Action Execution (Swap/Liquidity)
+async function handleAction() {
+    if (!userAddress) return connectWallet();
     
-    const amount = fromAmount.value;
+    const amount = document.getElementById('fromAmount').value;
     if (!amount || amount <= 0) return alert("Sahi amount daalo!");
 
-    swapBtn.innerText = "Processing...";
-    swapBtn.disabled = true;
+    const actionBtn = document.getElementById('actionBtn');
+    actionBtn.innerText = "Processing...";
+    actionBtn.disabled = true;
 
     try {
-        // Tumhare Vercel API ko call kar raha hai
+        // Backend API call to Circle logic
         const response = await fetch('/api/swap', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                walletId: userWalletId,
-                fromSymbol: 'tUSDC', // Logic: ETH/ARC replacement
-                amount: amount
+                userAddress: userAddress,
+                amount: amount,
+                type: currentTab,
+                clientKey: CLIENT_KEY // Verification for backend
             })
         });
 
-        const result = await response.json();
-        
-        if (result.success) {
-            alert("Transaction Success!");
-            addTxToHistory("SWAP", `Swapped ${amount} ETH for ARC`);
-            fromAmount.value = "";
-            toAmount.value = "";
+        const data = await response.json();
+        if (data.success) {
+            alert(`${currentTab.toUpperCase()} Successful!`);
+            saveTx(currentTab, amount);
         } else {
-            alert("Error: " + result.error);
+            alert("Error: " + data.error);
         }
     } catch (err) {
-        alert("Request Failed: " + err.message);
+        alert("Transaction Failed on RALOSWAP!");
     } finally {
-        swapBtn.innerText = "Swap";
-        swapBtn.disabled = false;
+        actionBtn.innerText = currentTab === 'swap' ? "Swap Now" : "Supply Liquidity";
+        actionBtn.disabled = false;
     }
-});
+}
 
-// 6. Price Calculation Simulation
-fromAmount.addEventListener('input', (e) => {
-    const val = e.target.value;
-    if (val) {
-        // Testnet simulation: 1 ETH = 2500 ARC
-        toAmount.value = (val * 2500).toFixed(2);
-    } else {
-        toAmount.value = "";
-    }
-});
-
-// 7. History Management
-function addTxToHistory(type, desc) {
-    const newTx = {
-        type,
-        desc,
-        date: new Date().toLocaleString(),
-        status: 'Completed'
-    };
-    txHistory.unshift(newTx);
-    localStorage.setItem('arc_tx_history', JSON.stringify(txHistory));
+// 6. History Management
+function saveTx(type, amount) {
+    let history = JSON.parse(localStorage.getItem('ralo_tx')) || [];
+    history.unshift({
+        type: type.toUpperCase(),
+        detail: `${amount} ETH ➜ ARC`,
+        time: new Date().toLocaleTimeString(),
+        status: "Success"
+    });
+    localStorage.setItem('ralo_tx', JSON.stringify(history));
 }
 
 function renderHistory() {
-    const container = document.querySelector('.main-content');
-    let html = `<div class="swap-card"><h3>Transaction History</h3>`;
+    const list = document.getElementById('history-list');
+    const history = JSON.parse(localStorage.getItem('ralo_tx')) || [];
     
-    if (txHistory.length === 0) {
-        html += `<p style="color:var(--subtext); font-size:14px;">No transactions yet.</p>`;
-    } else {
-        txHistory.forEach(tx => {
-            html += `
-                <div class="details-box" style="margin-bottom:10px;">
-                    <div class="detail-row"><b>${tx.type}</b> <span>${tx.status}</span></div>
-                    <div class="detail-row"><small>${tx.desc}</small> <small>${tx.date}</small></div>
-                </div>`;
-        });
+    if (history.length === 0) {
+        list.innerHTML = `<p style="text-align:center; color:gray; padding:20px;">No history found on RALOSCAN.</p>`;
+        return;
     }
-    html += `<button onclick="window.location.reload()" class="swap-button">Back to Swap</button></div>`;
-    container.innerHTML = html;
+
+    list.innerHTML = history.map(tx => `
+        <div class="details-box">
+            <div class="detail-row">
+                <span class="label"><b>${tx.type}</b></span>
+                <span class="value" style="color:#10b981;">${tx.status}</span>
+            </div>
+            <div class="detail-row">
+                <span class="label">${tx.detail}</span>
+                <span class="value">${tx.time}</span>
+            </div>
+        </div>
+    `).join('');
 }
+
+async function updateBalances() {
+    if (!provider) return;
+    const balance = await provider.getBalance(userAddress);
+    document.getElementById('eth-balance').innerText = `Balance: ${parseFloat(ethers.utils.formatEther(balance)).toFixed(4)} ETH`;
+}
+
+// Listeners
+document.getElementById('connectBtn').addEventListener('click', connectWallet);
+document.getElementById('actionBtn').addEventListener('click', handleAction);
