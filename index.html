@@ -3,101 +3,272 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arc Ralo Swap | DeFi</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Arc-Swap Testnet</title>
     <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
     <style>
-        body { background-color: #000000; color: white; font-family: sans-serif; }
-        .sidebar-item { transition: 0.3s; cursor: pointer; border-radius: 12px; }
-        .active-tab { background-color: #1a1a1a; color: #d4ff33 !important; border-left: 4px solid #d4ff33; }
-        .glass-card { background: #0f0f0f; border: 1px solid #1f1f1f; border-radius: 24px; }
-        .neon-btn { background-color: #d4ff33; color: black; font-weight: bold; transition: 0.3s; }
-        .neon-btn:hover { box-shadow: 0 0 20px rgba(212, 255, 51, 0.4); }
+        :root {
+            --primary: #10b981; 
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --border: #e2e8f0;
+            --subtext: #64748b;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Navigation */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 5%;
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-links span {
+            margin: 0 12px;
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--subtext);
+            font-size: 14px;
+        }
+
+        .nav-links span.active { color: var(--primary); font-weight: 600; }
+
+        #connectBtn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        /* Layout */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 60px;
+        }
+
+        .swap-card {
+            background: var(--card);
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+            border: 1px solid var(--border);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .card-header h3 { margin: 0; font-size: 18px; }
+
+        /* Input Boxes */
+        .token-input-container {
+            background: #f1f5f9;
+            padding: 12px 16px;
+            border-radius: 16px;
+            margin-bottom: 4px;
+        }
+
+        .token-info-top {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--subtext);
+            margin-bottom: 6px;
+        }
+
+        .input-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .input-row input {
+            background: none;
+            border: none;
+            font-size: 20px;
+            font-weight: 600;
+            width: 60%;
+            outline: none;
+        }
+
+        .token-badge {
+            background: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .divider {
+            height: 32px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: -16px 0;
+            position: relative;
+            z-index: 2;
+        }
+
+        .divider button {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+
+        /* Action Button */
+        .swap-button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 14px;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 700;
+            margin-top: 16px;
+            cursor: pointer;
+        }
+
+        /* Detail Rows */
+        .details-box {
+            margin-top: 16px;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px dashed var(--border);
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+
+        .detail-row:last-child { margin-bottom: 0; }
+        .label { color: var(--subtext); }
+        .value { font-weight: 600; }
+
+        /* Route Box */
+        .route-container {
+            margin-top: 12px;
+            background: white;
+            padding: 8px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
     </style>
 </head>
-<body class="flex flex-col md:flex-row min-h-screen">
+<body>
 
-    <!-- SIDEBAR (Desktop) -->
-    <aside class="w-64 border-r border-gray-900 p-6 hidden md:flex flex-col gap-8">
-        <div class="text-xl font-black italic text-[#d4ff33]">ARC RALO</div>
-        <nav class="flex flex-col gap-2">
-            <div onclick="switchTab('portfolio')" id="tab-portfolio" class="sidebar-item p-4 text-gray-400">💼 Portfolio</div>
-            <div onclick="switchTab('swap')" id="tab-swap" class="sidebar-item p-4 active-tab">⇌ Swap</div>
-            <div onclick="switchTab('liquidity')" id="tab-liquidity" class="sidebar-item p-4 text-gray-400">🌊 Liquidity</div>
-            <div onclick="switchTab('history')" id="tab-history" class="sidebar-item p-4 text-gray-400">🕒 History</div>
-        </nav>
-    </aside>
+    <nav>
+        <div style="font-weight: 800; color: var(--primary); font-size: 20px;">ARC-SWAP</div>
+        <div class="nav-links">
+            <span class="active">Swap</span>
+            <span>Liquidity</span>
+            <span>History</span>
+        </div>
+        <button id="connectBtn">Connect Wallet</button>
+    </nav>
 
-    <!-- MOBILE HEADER -->
-    <div class="md:hidden p-4 border-b border-gray-900 flex justify-between items-center bg-black sticky top-0 z-50">
-        <div class="text-[#d4ff33] font-bold italic">ARC RALO</div>
-        <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="text-white text-2xl">☰</button>
+    <div class="main-content">
+        <div class="swap-card">
+            <div class="card-header">
+                <h3>Swap Tokens</h3>
+                <span>⚙️</span>
+            </div>
+
+            <!-- From Token -->
+            <div class="token-input-container">
+                <div class="token-info-top">
+                    <span>You Pay</span>
+                    <span>Balance: 0.00 ETH</span>
+                </div>
+                <div class="input-row">
+                    <input type="number" id="fromAmount" placeholder="0.0">
+                    <div class="token-badge">💎 ETH <small>▼</small></div>
+                </div>
+            </div>
+
+            <!-- Flip Arrow -->
+            <div class="divider">
+                <button>⇅</button>
+            </div>
+
+            <!-- To Token -->
+            <div class="token-input-container">
+                <div class="token-info-top">
+                    <span>You Receive</span>
+                    <span>Balance: 0.00 ARC</span>
+                </div>
+                <div class="input-row">
+                    <input type="number" id="toAmount" placeholder="0.0" readonly>
+                    <div class="token-badge">🌀 ARC <small>▼</small></div>
+                </div>
+            </div>
+
+            <button class="swap-button" id="swapBtn">Connect Wallet First</button>
+
+            <!-- Detailed Stats -->
+            <div class="details-box">
+                <div class="detail-row">
+                    <span class="label">Price Impact</span>
+                    <span class="value" style="color: var(--primary);">&lt; 0.01%</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Slippage Tolerance</span>
+                    <span class="value">0.5%</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Estimated Gas</span>
+                    <span class="value">~$1.20</span>
+                </div>
+            </div>
+
+            <!-- Token Route -->
+            <div class="route-container">
+                <span class="label">Route:</span>
+                <span>ETH</span>
+                <span>➜</span>
+                <span>ARC</span>
+            </div>
+        </div>
     </div>
-
-    <!-- MOBILE MENU -->
-    <div id="mobile-menu" class="hidden md:hidden bg-black border-b border-gray-900 p-4 absolute top-16 w-full z-40">
-        <div onclick="switchTab('portfolio')" class="p-3 text-gray-400">Portfolio</div>
-        <div onclick="switchTab('swap')" class="p-3 text-white">Swap</div>
-        <div onclick="switchTab('liquidity')" class="p-3 text-gray-400">Liquidity</div>
-        <div onclick="switchTab('history')" class="p-3 text-gray-400">History</div>
-    </div>
-
-    <!-- MAIN CONTENT -->
-    <main class="flex-1 p-4 md:p-10">
-        <div class="flex justify-end mb-8">
-            <button id="connectWallet" class="bg-[#1a1a1a] px-6 py-2 rounded-full text-sm border border-gray-800">Connect Wallet</button>
-        </div>
-
-        <!-- SECTIONS -->
-        <div id="section-swap" class="section flex justify-center">
-            <div class="w-full max-w-md glass-card p-6">
-                <h3 class="mb-6 font-bold text-gray-400 uppercase tracking-tighter">Swap Tokens</h3>
-                <div class="bg-black p-4 rounded-xl mb-2 border border-gray-900">
-                    <input id="inputAmount" type="number" placeholder="0.00" class="bg-transparent text-2xl w-full outline-none">
-                </div>
-                <div class="text-center my-2 text-[#d4ff33]">↓</div>
-                <div class="bg-black p-4 rounded-xl border border-gray-900 mb-6">
-                    <input id="outputAmount" type="text" placeholder="0.00" readonly class="bg-transparent text-2xl w-full outline-none text-gray-500">
-                </div>
-                <button id="swapBtn" class="w-full neon-btn py-4 rounded-xl uppercase italic">Review Swap</button>
-            </div>
-        </div>
-
-        <div id="section-portfolio" class="section hidden">
-            <h2 class="text-2xl font-bold mb-6">Your Portfolio</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="glass-card p-6">
-                    <p class="text-gray-500 text-sm">USDC Balance</p>
-                    <p id="usdc-bal" class="text-3xl font-black mt-2">0.00</p>
-                </div>
-                <div class="glass-card p-6">
-                    <p class="text-gray-500 text-sm">EURC Balance</p>
-                    <p id="eurc-bal" class="text-3xl font-black mt-2">0.00</p>
-                </div>
-            </div>
-        </div>
-
-        <div id="section-liquidity" class="section hidden">
-            <h2 class="text-2xl font-bold mb-6 italic">Liquidity Pools</h2>
-            <div class="glass-card p-10 text-center text-gray-600">
-                Connect Wallet to view active pools.
-            </div>
-        </div>
-
-        <div id="section-history" class="section hidden">
-            <h2 class="text-2xl font-bold mb-6">Transaction History</h2>
-            <div class="glass-card overflow-hidden">
-                <table class="w-full text-left">
-                    <thead class="bg-[#1a1a1a] text-xs text-gray-500 uppercase">
-                        <tr><th class="p-4">Action</th><th class="p-4">Amount</th><th class="p-4">Status</th></tr>
-                    </thead>
-                    <tbody id="history-rows">
-                        <tr><td colspan="3" class="p-10 text-center text-gray-600">No activity yet.</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </main>
 
     <script src="app.js"></script>
 </body>
