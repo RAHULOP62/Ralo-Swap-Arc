@@ -4,201 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RALOSWAP - Testnet DEX</title>
-    <!-- Ethers.js Library -->
     <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
     <style>
-        :root {
-            --primary: #10b981; 
-            --bg: #f8fafc;
-            --card: #ffffff;
-            --text: #1e293b;
-            --border: #e2e8f0;
-            --subtext: #64748b;
-        }
-
-        body {
-            background-color: var(--bg);
-            color: var(--text);
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-
-        nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 5%;
-            background: var(--card);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .nav-links span {
-            margin: 0 12px;
-            cursor: pointer;
-            font-weight: 500;
-            color: var(--subtext);
-            font-size: 14px;
-            transition: 0.3s;
-        }
-
+        :root { --primary: #10b981; --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --border: #e2e8f0; --subtext: #64748b; }
+        body { background-color: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; margin: 0; display: flex; flex-direction: column; min-height: 100vh; }
+        nav { display: flex; justify-content: space-between; align-items: center; padding: 12px 5%; background: var(--card); border-bottom: 1px solid var(--border); }
+        .nav-links span { margin: 0 12px; cursor: pointer; font-weight: 500; color: var(--subtext); font-size: 14px; transition: 0.3s; }
         .nav-links span.active { color: var(--primary); font-weight: 600; }
-
-        #connectBtn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-        }
-
-        .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding-top: 60px;
-        }
-
-        .swap-card {
-            background: var(--card);
-            width: 100%;
-            max-width: 420px;
-            padding: 20px;
-            border-radius: 20px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.04);
-            border: 1px solid var(--border);
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 16px;
-        }
-
+        #connectBtn { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 14px; }
+        .main-content { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 60px; }
+        .swap-card { background: var(--card); width: 100%; max-width: 420px; padding: 20px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); border: 1px solid var(--border); }
+        .card-header { display: flex; justify-content: space-between; margin-bottom: 16px; }
         .card-header h3 { margin: 0; font-size: 18px; }
-
-        .token-input-container {
-            background: #f1f5f9;
-            padding: 12px 16px;
-            border-radius: 16px;
-            margin-bottom: 4px;
-        }
-
-        .token-info-top {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            color: var(--subtext);
-            margin-bottom: 6px;
-        }
-
-        .input-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .input-row input {
-            background: none;
-            border: none;
-            font-size: 20px;
-            font-weight: 600;
-            width: 60%;
-            outline: none;
-        }
-
-        .token-badge {
-            background: white;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-weight: 700;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        .divider {
-            height: 32px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: -16px 0;
-            position: relative;
-            z-index: 2;
-        }
-
-        .divider button {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 4px;
-            cursor: pointer;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-        }
-
-        .swap-button {
-            background: #cbd5e1; /* Gray by default until connect */
-            color: white;
-            border: none;
-            width: 100%;
-            padding: 14px;
-            border-radius: 14px;
-            font-size: 16px;
-            font-weight: 700;
-            margin-top: 16px;
-            cursor: not-allowed;
-        }
-
-        .swap-button.ready {
-            background: var(--primary);
-            cursor: pointer;
-        }
-
-        .details-box {
-            margin-top: 16px;
-            padding: 12px;
-            background: #f8fafc;
-            border-radius: 12px;
-            border: 1px dashed var(--border);
-        }
-
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            margin-bottom: 6px;
-        }
-
+        .token-input-container { background: #f1f5f9; padding: 12px 16px; border-radius: 16px; margin-bottom: 4px; }
+        .token-info-top { display: flex; justify-content: space-between; font-size: 12px; color: var(--subtext); margin-bottom: 6px; }
+        .input-row { display: flex; align-items: center; justify-content: space-between; }
+        .input-row input { background: none; border: none; font-size: 20px; font-weight: 600; width: 60%; outline: none; }
+        .token-badge { background: white; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .divider { height: 32px; display: flex; justify-content: center; align-items: center; margin: -16px 0; position: relative; z-index: 2; }
+        .divider button { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 4px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+        .swap-button { background: #cbd5e1; color: white; border: none; width: 100%; padding: 14px; border-radius: 14px; font-size: 16px; font-weight: 700; margin-top: 16px; cursor: not-allowed; }
+        .swap-button.ready { background: var(--primary); cursor: pointer; }
+        .details-box { margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 12px; border: 1px dashed var(--border); }
+        .detail-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; }
         .label { color: var(--subtext); }
         .value { font-weight: 600; }
-
-        .route-container {
-            margin-top: 12px;
-            background: white;
-            padding: 8px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            font-size: 11px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        /* History styling */
-        .history-item {
-            border-bottom: 1px solid var(--border);
-            padding: 10px 0;
-        }
-        .history-item:last-child { border: none; }
+        .route-container { margin-top: 12px; background: white; padding: 8px; border-radius: 10px; border: 1px solid var(--border); font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 8px; }
     </style>
 </head>
 <body>
@@ -213,66 +44,53 @@
         <button id="connectBtn">Connect MetaMask</button>
     </nav>
 
-    <div class="main-content" id="app-container">
-        <!-- Main Card -->
-        <div class="swap-card" id="main-card">
+    <div class="main-content">
+        <div class="swap-card">
             <div class="card-header">
                 <h3 id="card-title">Swap Tokens</h3>
                 <span>⚙️</span>
             </div>
 
-            <!-- Input Section -->
             <div id="swap-ui">
                 <div class="token-input-container">
                     <div class="token-info-top">
                         <span id="pay-label">You Pay</span>
-                        <span id="eth-balance">Balance: 0.00 ETH</span>
+                        <span id="balance-from">Balance: 0.00 tUSDC</span>
                     </div>
                     <div class="input-row">
                         <input type="number" id="fromAmount" placeholder="0.0" oninput="calculatePrice()">
-                        <div class="token-badge">💎 ETH <small>▼</small></div>
+                        <div class="token-badge" id="badge-from">💵 tUSDC <small>▼</small></div>
                     </div>
                 </div>
 
-                <div class="divider">
-                    <button onclick="flipTokens()">⇅</button>
-                </div>
+                <div class="divider"><button onclick="flipTokens()">⇅</button></div>
 
                 <div class="token-input-container">
                     <div class="token-info-top">
                         <span id="receive-label">You Receive</span>
-                        <span id="arc-balance">Balance: 0.00 ARC</span>
+                        <span id="balance-to">Balance: 0.00 tARC</span>
                     </div>
                     <div class="input-row">
                         <input type="number" id="toAmount" placeholder="0.0" readonly>
-                        <div class="token-badge">🌀 ARC <small>▼</small></div>
+                        <div class="token-badge" id="badge-to">🌀 tARC <small>▼</small></div>
                     </div>
                 </div>
 
                 <button class="swap-button" id="actionBtn" onclick="handleAction()" disabled>Connect Wallet First</button>
 
                 <div class="details-box">
-                    <div class="detail-row">
-                        <span class="label">Price Impact</span>
-                        <span class="value" style="color: var(--primary);">&lt; 0.01%</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="label">Estimated Gas</span>
-                        <span class="value" id="gas-fee">~$1.20</span>
-                    </div>
+                    <div class="detail-row"><span class="label">Price Impact</span><span class="value" style="color: var(--primary);">&lt; 0.01%</span></div>
+                    <div class="detail-row"><span class="label">Network Gas</span><span class="value">Paid in Native USDC</span></div>
                 </div>
 
                 <div class="route-container">
                     <span class="label">Route:</span>
-                    <span id="route-path">ETH ➜ ARC</span>
+                    <span id="route-path">tUSDC ➜ tARC</span>
                 </div>
             </div>
 
-            <!-- History UI (Hidden by default) -->
             <div id="history-ui" style="display: none;">
-                <div id="history-list">
-                    <!-- Transactions will appear here -->
-                </div>
+                <div id="history-list"></div>
                 <button class="swap-button ready" style="margin-top:20px" onclick="switchTab('swap')">Back to Swap</button>
             </div>
         </div>
