@@ -10,12 +10,12 @@ const TOKENS = {
     USYC: "0xe9185F0c5F296Ed1797AaE4238D26CCaBEadb86C"  
 };
 
-const ARC_CHAIN_ID = "0x4cef52"; 
+const ARC_CHAIN_ID = "0x4cef52"; // Arc Testnet
 let provider, signer, userAddress;
 let currentTab = 'swap';
 let currentFromToken = 'USDC';
 
-// Ethers Library Loader Fix
+// Ethers Loader
 function loadEthers() {
     return new Promise((resolve, reject) => {
         if (window.ethers) { resolve(); return; }
@@ -35,23 +35,21 @@ async function connectWallet() {
 
         provider = new ethers.providers.Web3Provider(window.ethereum);
 
-        // Switch to Arc Testnet automatically
+        // Auto-switch to Arc Testnet
         try {
             await window.ethereum.request({
                 method: 'wallet_switchEthereumChain',
                 params: [{ chainId: ARC_CHAIN_ID }],
             });
         } catch (err) {
-            if (err.code === 4902) {
-                alert("Arc Testnet MetaMask mein add karo!");
-            }
+            if (err.code === 4902) alert("Arc Testnet MetaMask mein add karo!");
         }
 
         const accounts = await provider.send("eth_requestAccounts", []);
-        signer = provider.getSigner();
         userAddress = accounts[0];
+        signer = provider.getSigner();
 
-        // UI Updates
+        // UI Updates: Address Short Form (0x1234...abcd)
         const btn = document.getElementById('connectBtn');
         btn.innerText = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
         btn.style.background = "#10b981";
@@ -61,13 +59,15 @@ async function connectWallet() {
         actionBtn.classList.add('ready');
         actionBtn.disabled = false;
 
+        // Initialize UI with tokens
+        setupUI();
         updateBalances();
     } catch (error) {
         console.error("Connection error:", error);
     }
 }
 
-// 3. Tab Switching
+// 3. Tab Switching Logic
 function switchTab(tab) {
     currentTab = tab;
     document.querySelectorAll('.nav-links span').forEach(s => s.classList.remove('active'));
@@ -83,44 +83,28 @@ function switchTab(tab) {
     if (tab === 'history') renderHistory();
 }
 
-// 4. Balance Fetching (6 Decimals for Arc Stablecoins)
-async function updateBalances() {
-    if (!userAddress || !provider) return;
-    const minABI = ["function balanceOf(address) view returns (uint256)"];
-    
-    try {
-        const usdcContract = new ethers.Contract(TOKENS.USDC, minABI, provider);
-        const eurcContract = new ethers.Contract(TOKENS.EURC, minABI, provider);
-
-        const uBal = await usdcContract.balanceOf(userAddress);
-        const eBal = await eurcContract.balanceOf(userAddress);
-
-        document.getElementById('token1-balance').innerText = `Balance: ${parseFloat(ethers.utils.formatUnits(uBal, 6)).toFixed(2)} USDC`;
-        document.getElementById('token2-balance').innerText = `Balance: ${parseFloat(ethers.utils.formatUnits(eBal, 6)).toFixed(2)} EURC`;
-    } catch (e) {
-        console.error("Balance fetch error:", e);
-    }
-}
-
-// 5. Price & Action Logic
+// 4. Price & Token UI Logic
 function calculatePrice() {
     const val = document.getElementById('fromAmount').value;
     const rate = currentFromToken === 'USDC' ? 0.92 : 1.08;
     document.getElementById('toAmount').value = val > 0 ? (val * rate).toFixed(2) : "";
 }
 
+function setupUI() {
+    const toToken = currentFromToken === 'USDC' ? 'EURC' : 'USDC';
+    document.getElementById('badge-from').innerHTML = `${currentFromToken === 'USDC' ? '💵 USDC' : '💶 EURC'} <small>▼</small>`;
+    document.getElementById('badge-to').innerHTML = `${toToken === 'USDC' ? '💵 USDC' : '💶 EURC'} <small>▼</small>`;
+    document.getElementById('route-path').innerText = `${currentFromToken} ➜ StableFX ➜ ${toToken}`;
+}
+
 function flipTokens() {
     currentFromToken = (currentFromToken === 'USDC') ? 'EURC' : 'USDC';
-    const toToken = (currentFromToken === 'USDC') ? 'EURC' : 'USDC';
-
-    document.getElementById('pay-label').innerText = `You Pay (${currentFromToken})`;
-    document.getElementById('receive-label').innerText = `You Receive (${toToken})`;
-    document.getElementById('route-path').innerText = `${currentFromToken} ➜ StableFX ➜ ${toToken}`;
-    
+    setupUI();
     updateBalances();
     calculatePrice();
 }
 
+// 5. Handle Action (Backend API Call)
 async function handleAction() {
     if (!userAddress) return connectWallet();
     const amount = document.getElementById('fromAmount').value;
@@ -138,8 +122,7 @@ async function handleAction() {
                 walletId: "YOUR_CIRCLE_WALLET_ID",
                 fromSymbol: currentFromToken,
                 amount: amount,
-                userAddress: userAddress,
-                network: 'arc-testnet'
+                userAddress: userAddress
             })
         });
 
@@ -149,7 +132,7 @@ async function handleAction() {
             saveTx(currentTab, amount);
             updateBalances();
         } else {
-            alert("Error: " + data.error);
+            alert("Error: " + (data.error || "Failed"));
         }
     } catch (err) {
         alert("Transaction Failed!");
@@ -159,12 +142,31 @@ async function handleAction() {
     }
 }
 
-// 6. History Management
+// 6. Balance Fetching (Standard 6 Decimals for Arc)
+async function updateBalances() {
+    if (!userAddress || !provider) return;
+    const minABI = ["function balanceOf(address) view returns (uint256)"];
+    
+    try {
+        const usdcContract = new ethers.Contract(TOKENS.USDC, minABI, provider);
+        const eurcContract = new ethers.Contract(TOKENS.EURC, minABI, provider);
+
+        const uBal = await usdcContract.balanceOf(userAddress);
+        const eBal = await eurcContract.balanceOf(userAddress);
+
+        document.getElementById('token1-balance').innerText = `Balance: ${parseFloat(ethers.utils.formatUnits(uBal, 6)).toFixed(2)} USDC`;
+        document.getElementById('token2-balance').innerText = `Balance: ${parseFloat(ethers.utils.formatUnits(eBal, 6)).toFixed(2)} EURC`;
+    } catch (e) {
+        console.error("Balance error:", e);
+    }
+}
+
+// 7. History Management
 function saveTx(type, amount) {
     let history = JSON.parse(localStorage.getItem('ralo_tx')) || [];
     history.unshift({
         type: type.toUpperCase(),
-        detail: `${amount} ${currentFromToken} ➜ ARC Network`,
+        detail: `${amount} ${currentFromToken} ➜ Arc Network`,
         time: new Date().toLocaleTimeString(),
         status: "Success"
     });
