@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arc Ralo Swap | Next-Gen DeFi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
+    
+    <style>
+        body { background-color: #000000; color: white; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        .sidebar-item { transition: 0.2s; color: #9ca3af; border-left: 3px solid transparent; }
+        .sidebar-item:hover { background-color: #1a1a1a; color: white; }
+        .active-nav { background-color: #1a1a1a; border-left: 3px solid #d4ff33; color: white !important; border-radius: 0 12px 12px 0; }
+        .swap-card { background-color: #0f0f0f; border: 1px solid #1f1f1f; box-shadow: 0 10px 50px rgba(0,0,0,0.8); }
+        .input-group { background-color: #080808; border: 1px solid #1a1a1a; transition: 0.3s; }
+        .input-group:focus-within { border-color: #d4ff33; }
+        .neon-btn { background-color: #d4ff33; color: black; transition: 0.3s; box-shadow: 0 0 15px rgba(212, 255, 51, 0.2); }
+        .neon-btn:hover:not(:disabled) { background-color: #b8e62d; transform: translateY(-2px); box-shadow: 0 0 25px rgba(212, 255, 51, 0.4); }
+        .neon-btn:disabled { background-color: #333; color: #666; cursor: not-allowed; }
+        .hidden-section { display: none; }
+    </style>
+</head>
+<body class="flex min-h-screen">
+
+    <aside class="w-64 border-r border-gray-900 p-6 flex flex-col justify-between hidden md:flex fixed h-full">
+        <div>
+            <div class="flex items-center gap-2 mb-10">
+                <div class="w-8 h-8 bg-[#d4ff33] rounded-lg shadow-[0_0_15px_rgba(212,255,51,0.5)]"></div>
+                <h1 class="text-lg font-bold tracking-tighter">ARC RALO</h1>
+            </div>
+            <nav class="space-y-2">
+                <div onclick="showSection('portfolio')" class="sidebar-item p-3 cursor-pointer flex items-center gap-3" id="nav-portfolio"><span>💼</span> Portfolio</div>
+                <div onclick="showSection('swap')" class="sidebar-item p-3 cursor-pointer flex items-center gap-3 active-nav" id="nav-swap"><span>⇌</span> Swap</div>
+                <div onclick="showSection('history')" class="sidebar-item p-3 cursor-pointer flex items-center gap-3" id="nav-history"><span>🕒</span> History</div>
+            </nav>
+        </div>
+        <div class="text-gray-500 text-xs px-3">Arc Testnet Node: Online 🟢</div>
+    </aside>
+
+    <main class="flex-1 ml-64 p-8">
+        <header class="flex justify-between items-center mb-12">
+            <h2 id="page-title" class="text-2xl font-semibold uppercase tracking-widest text-gray-400">Swap</h2>
+            <div class="flex items-center gap-4">
+                <button id="connectWallet" class="bg-[#1a1a1a] px-5 py-2 rounded-xl text-sm border border-gray-800 hover:border-[#d4ff33] transition-all">
+                    Connect Wallet
+                </button>
+            </div>
+        </header>
+
+        <section id="section-swap" class="animate-in fade-in duration-500">
+            <div class="flex justify-center">
+                <div class="w-full max-w-md swap-card p-6 rounded-[32px]">
+                    <div class="flex justify-between items-center mb-6">
+                        <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Arc Ralo Swap</span>
+                        <div class="flex gap-3 text-gray-500"><span>⚙️</span></div>
+                    </div>
+
+                    <div class="input-group p-5 rounded-2xl mb-2">
+                        <div class="flex justify-between text-[10px] uppercase font-bold text-gray-500 mb-2">
+                            <span>Sell</span>
+                            <span>Balance: <span id="usdcBalance">0.00</span></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <input id="inputAmount" type="number" placeholder="0.00" class="bg-transparent text-3xl outline-none w-1/2 font-bold text-white">
+                            <div class="flex items-center gap-2 bg-[#1a1a1a] px-3 py-1.5 rounded-xl border border-gray-800">
+                                <div class="w-5 h-5 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
+                                <span class="font-bold text-xs uppercase">USDC</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-center -my-5 relative z-10">
+                        <div class="bg-[#1a1a1a] p-2 rounded-xl border-[4px] border-[#0f0f0f] text-[#d4ff33] shadow-lg">↓</div>
+                    </div>
+
+                    <div class="input-group p-5 rounded-2xl mt-2">
+                        <div class="flex justify-between text-[10px] uppercase font-bold text-gray-500 mb-2">
+                            <span>Buy</span>
+                            <span>Balance: <span id="eurcBalance">0.00</span></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <input id="outputAmount" type="text" placeholder="0.00" readonly class="bg-transparent text-3xl outline-none w-1/2 font-bold text-gray-500">
+                            <div class="flex items-center gap-2 bg-[#1a1a1a] px-3 py-1.5 rounded-xl border border-gray-800">
+                                <div class="w-5 h-5 bg-[#d4ff33] rounded-full shadow-[0_0_10px_rgba(212,255,51,0.5)]"></div>
+                                <span class="font-bold text-xs uppercase">EURC</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8">
+                        <button id="swapBtn" class="w-full neon-btn py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em]">
+                            Connect Wallet to Swap
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-portfolio" class="hidden-section">
+            <div class="max-w-4xl mx-auto space-y-6">
+                <div class="swap-card p-8 rounded-3xl bg-gradient-to-br from-[#0f0f0f] to-[#050505]">
+                    <p class="text-gray-500 text-xs font-bold uppercase tracking-widest">Net Worth</p>
+                    <p id="total-val" class="text-5xl font-black mt-2 text-[#d4ff33]">$0.00</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="swap-card p-6 rounded-2xl border-l-2 border-blue-500">
+                        <p class="text-gray-500 text-xs uppercase font-bold">USD Coin (Native)</p>
+                        <p id="port-usdc" class="text-2xl font-bold mt-1">0.00 USDC</p>
+                    </div>
+                    <div class="swap-card p-6 rounded-2xl border-l-2 border-[#d4ff33]">
+                        <p class="text-gray-500 text-xs uppercase font-bold">Euro Coin</p>
+                        <p id="port-eurc" class="text-2xl font-bold mt-1">0.00 EURC</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-history" class="hidden-section">
+            <div class="max-w-4xl mx-auto swap-card rounded-2xl overflow-hidden">
+                <div id="history-table" class="divide-y divide-gray-900">
+                    <div class="p-10 text-center text-gray-600 font-medium">No activity recorded on Arc Ralo Swap.</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
